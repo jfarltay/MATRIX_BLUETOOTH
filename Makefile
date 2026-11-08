@@ -1,3 +1,4 @@
+
 TITLE      := MATRIX BLUETOOTH ENGINE
 APPID      := MTXBT001
 CONTENTID  := UP0001-$(APPID)_00-0000000000000000
@@ -7,6 +8,8 @@ ICON0      := $(CURDIR)/ICON0.PNG
 SFOXML     := $(PS3DEV)/bin/sfo.xml
 
 OFILES     := main.o
+
+LD         := ppu-gcc
 
 CFLAGS     += -O2 -Wall $(MACHDEP) $(LIBPSL1GHT_INC)
 LDFLAGS    += $(MACHDEP)
