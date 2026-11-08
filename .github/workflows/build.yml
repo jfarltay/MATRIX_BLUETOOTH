@@ -10,8 +10,8 @@ on:
 jobs:
   build:
     name: Build PS3 Homebrew
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
 
     steps:
       - name: Download Project
@@ -30,11 +30,11 @@ jobs:
 
       - name: Download PS3DEV Toolchain
         run: |
-          set -e
+          set -euo pipefail
 
-          URL="https://cdn.hddj.top/ps3dev/ps3toolchain/releases/download/2026-06-09/ps3dev-92534e60-ubuntu-latest.tar.gz"
-
-          curl -fL "$URL" -o "$RUNNER_TEMP/ps3dev.tar.gz"
+          curl -fL \
+            https://cdn.hddj.top/ps3dev/ps3toolchain/releases/download/2026-06-09/ps3dev-92534e60-ubuntu-latest.tar.gz \
+            -o "$RUNNER_TEMP/ps3dev.tar.gz"
 
           tar -xzf "$RUNNER_TEMP/ps3dev.tar.gz" -C "$GITHUB_WORKSPACE"
 
@@ -45,21 +45,16 @@ jobs:
           echo "$GITHUB_WORKSPACE/ps3dev/ppu/bin" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/ps3dev/spu/bin" >> "$GITHUB_PATH"
 
-      - name: Verify PS3DEV
+      - name: Verify Toolchain
         run: |
           set -e
-
-          test -f "$PS3DEV/ppu_rules"
-          test -f "$PS3DEV/bin/sfo.xml"
-          test -f "$PS3DEV/bin/ICON0.PNG"
-
           ppu-gcc --version
-          sfo --help || true
+          test -f "$PSL1GHT/ppu_rules"
+          test -f "$PS3DEV/bin/sfo.xml"
 
-      - name: Verify MATRIX Project
+      - name: Verify Project Files
         run: |
           set -e
-
           test -f main.c
           test -f Makefile
           test -f ICON0.PNG
@@ -67,7 +62,6 @@ jobs:
       - name: Build MATRIX
         run: |
           set -e
-
           make clean
           make
           make pkg
