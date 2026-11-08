@@ -4,12 +4,14 @@ name: MATRIX BLUETOOTH ENGINE Build
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
+    name: Build PS3 Homebrew
     runs-on: ubuntu-22.04
-    timeout-minutes: 350
+    timeout-minutes: 60
 
     steps:
       - name: Download Project
@@ -18,28 +20,54 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf automake bison flex gcc g++ \
-            libelf-dev libgmp-dev libncurses5-dev libssl-dev \
-            libtool libtool-bin make texinfo patch wget zlib1g-dev \
-            pkg-config subversion git python3 python-is-python3 clang
+          sudo apt-get install -y \
+            autoconf automake bison flex gcc g++ \
+            libelf-dev libgmp-dev libncurses5-dev \
+            libssl-dev libtool libtool-bin make \
+            texinfo patch wget zlib1g-dev \
+            pkg-config subversion git python3 \
+            python-is-python3 clang curl p7zip-full
 
-      - name: Build PS3DEV
+      - name: Download PS3DEV Toolchain
         run: |
-          git clone https://github.com/ps3dev/ps3dev.git "$HOME/ps3dev"
-          cd "$HOME/ps3dev"
-          export PS3DEV="$HOME/ps3dev"
-          export PSL1GHT="$PS3DEV"
-          export PATH="$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin:$PATH"
-          ./build-all.sh
-          echo "PS3DEV=$PS3DEV" >> "$GITHUB_ENV"
-          echo "PSL1GHT=$PSL1GHT" >> "$GITHUB_ENV"
-          echo "$PS3DEV/bin" >> "$GITHUB_PATH"
-          echo "$PS3DEV/ppu/bin" >> "$GITHUB_PATH"
-          echo "$PS3DEV/spu/bin" >> "$GITHUB_PATH"
+          set -e
+
+          URL="https://cdn.hddj.top/ps3dev/ps3toolchain/releases/download/2026-06-09/ps3dev-92534e60-ubuntu-latest.tar.gz"
+
+          curl -fL "$URL" -o "$RUNNER_TEMP/ps3dev.tar.gz"
+
+          tar -xzf "$RUNNER_TEMP/ps3dev.tar.gz" -C "$GITHUB_WORKSPACE"
+
+          echo "PS3DEV=$GITHUB_WORKSPACE/ps3dev" >> "$GITHUB_ENV"
+          echo "PSL1GHT=$GITHUB_WORKSPACE/ps3dev" >> "$GITHUB_ENV"
+
+          echo "$GITHUB_WORKSPACE/ps3dev/bin" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/ps3dev/ppu/bin" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/ps3dev/spu/bin" >> "$GITHUB_PATH"
+
+      - name: Verify PS3DEV
+        run: |
+          set -e
+
+          test -f "$PS3DEV/ppu_rules"
+          test -f "$PS3DEV/bin/sfo.xml"
+          test -f "$PS3DEV/bin/ICON0.PNG"
+
+          ppu-gcc --version
+          sfo --help || true
+
+      - name: Verify MATRIX Project
+        run: |
+          set -e
+
+          test -f main.c
+          test -f Makefile
+          test -f ICON0.PNG
 
       - name: Build MATRIX
-        working-directory: matrix_bt_project
         run: |
+          set -e
+
           make clean
           make
           make pkg
@@ -49,7 +77,7 @@ jobs:
         with:
           name: MATRIX-BLUETOOTH-PS3
           path: |
-            matrix_bt_project/*.pkg
-            matrix_bt_project/*.self
-            matrix_bt_project/*.elf
+            *.pkg
+            *.self
+            *.elf
           if-no-files-found: error
