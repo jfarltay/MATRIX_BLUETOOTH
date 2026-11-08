@@ -1,0 +1,68 @@
+
+name: MATRIX BLUETOOTH ENGINE Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Download Project
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf automake bison flex gcc g++ \
+            libelf-dev libgmp-dev libncurses5-dev \
+            libssl-dev libtool libtool-bin make \
+            texinfo patch wget zlib1g-dev \
+            pkg-config subversion git \
+            python3 python-is-python3 clang
+
+      - name: Prepare PS3DEV
+        run: |
+          git clone https://github.com/ps3dev/ps3dev.git
+          cd ps3dev
+
+          export PS3DEV="$HOME/ps3dev"
+          export PSL1GHT="$PS3DEV"
+          export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"
+
+          ./build-all.sh
+
+          echo "PS3DEV=$PS3DEV" >> $GITHUB_ENV
+          echo "PSL1GHT=$PSL1GHT" >> $GITHUB_ENV
+          echo "$PS3DEV/bin" >> $GITHUB_PATH
+          echo "$PS3DEV/ppu/bin" >> $GITHUB_PATH
+          echo "$PS3DEV/spu/bin" >> $GITHUB_PATH
+
+      - name: Build MATRIX Application
+        run: |
+          if [ -f matrix_bt_project/Makefile ]; then
+            cd matrix_bt_project
+          elif [ -f Makefile ]; then
+            :
+          else
+            echo "Project Makefile not found"
+            exit 1
+          fi
+
+          make
+          make pkg
+
+      - name: Upload PS3 Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: MATRIX-BLUETOOTH-PS3
+          path: |
+            **/*.pkg
+            **/*.self
+            **/*.elf
+          if-no-files-found: error
